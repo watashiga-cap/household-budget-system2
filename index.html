@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家計簿管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #2196F3 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            border: none;
+            font-size: 14px;
+        }
+        
+        .tab:hover {
+            background: #e9ecef;
+        }
+        
+        .tab.active {
+            background: white;
+            border-bottom-color: #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .tab-content {
+            padding: 30px;
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            border-left: 5px solid #4CAF50;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .metric-card.income { border-left-color: #4CAF50; }
+        .metric-card.expense { border-left-color: #ff9800; }
+        .metric-card.balance { border-left-color: #9c27b0; }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value.positive { color: #4CAF50; }
+        .metric-value.negative { color: #f44336; }
+        .metric-value.neutral { color: #2196F3; }
+        
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .input-group input, .input-group select {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-restore {
+            background: #2196F3;
+        }
+        
+        .transaction-list {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .transaction-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .transaction-info {
+            flex: 1;
+        }
+        
+        .transaction-category {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .transaction-date {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .transaction-amount {
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .transaction-amount.income { color: #4CAF50; }
+        .transaction-amount.expense { color: #f44336; }
+        
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .summary-table th, .summary-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .summary-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .amount {
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        /* 通知スタイル */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+        
+        .notification.error {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .input-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 家計簿管理システム</h1>
+            <p>簡単で使いやすい家計簿でお金の管理をしましょう</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">📊 ダッシュボード</button>
+            <button class="tab" onclick="showTab('input')">📝 収支入力</button>
+            <button class="tab" onclick="showTab('history')">📋 取引履歴</button>
+            <button class="tab" onclick="showTab('summary')">📈 月次サマリー</button>
+        </div>
+        
+        <!-- ダッシュボードタブ -->
+        <div class="tab-content active" id="dashboard">
+            <div class="section-title">📊 今月の収支状況</div>
+            <div class="dashboard-grid">
+                <div class="metric-card income">
+                    <div class="metric-value positive" id="total-income">¥0</div>
+                    <div class="metric-label">今月の収入</div>
+                </div>
+                <div class="metric-card expense">
+                    <div class="metric-value negative" id="total-expense">¥0</div>
+                    <div class="metric-label">今月の支出</div>
+                </div>
+                <div class="metric-card balance">
+                    <div class="metric-value" id="balance">¥0</div>
+                    <div class="metric-label">収支差額</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value neutral" id="transaction-count">0</div>
+                    <div class="metric-label">取引件数</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 収支入力タブ -->
+        <div class="tab-content" id="input">
+            <div class="section-title">📝 収支データ入力</div>
+            
+            <div class="input-section">
+                <h3>新しい取引を追加</h3>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>種別</label>
+                        <select id="transaction-type">
+                            <option value="expense">支出</option>
+                            <option value="income">収入</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>カテゴリ</label>
+                        <select id="category">
+                            <optgroup label="💸 支出">
+                                <option value="食費">食費</option>
+                                <option value="生活費">生活費</option>
+                                <option value="レジャー費">レジャー費</option>
+                                <option value="旅費">旅費</option>
+                                <option value="seohyang支出">seohyang支出</option>
+                                <option value="美容費">美容費</option>
+                                <option value="住宅ローン">住宅ローン</option>
+                                <option value="水道光熱費">水道光熱費</option>
+                                <option value="教育費">教育費</option>
+                                <option value="その他支出">その他支出</option>
+                            </optgroup>
+                            <optgroup label="💰 収入">
+                                <option value="副収入">副収入</option>
+                                <option value="その他収入">その他収入</option>
+                                <option value="給与">給与</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>金額（円）</label>
+                        <input type="number" id="amount" placeholder="金額を入力">
+                    </div>
+                    <div class="input-group">
+                        <label>日付</label>
+                        <input type="date" id="date">
+                    </div>
+                    <div class="input-group">
+                        <label>メモ</label>
+                        <input type="text" id="memo" placeholder="詳細（任意）">
+                    </div>
+                </div>
+                <button class="btn" onclick="addTransaction()">取引を追加</button>
+                <button class="btn btn-secondary" onclick="clearForm()">フォームクリア</button>
+                <button class="btn btn-restore" onclick="restoreWeekendData()">🔄 土日データ復元</button>
+            </div>
+        </div>
+        
+        <!-- 取引履歴タブ -->
+        <div class="tab-content" id="history">
+            <div class="section-title">📋 取引履歴</div>
+            
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-danger" onclick="clearAllData()">全データクリア</button>
+            </div>
+            
+            <div class="transaction-list" id="transaction-list">
+                <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
+                    まだ取引データがありません
+                </div>
+            </div>
+        </div>
+        
+        <!-- 月次サマリータブ -->
+        <div class="tab-content" id="summary">
+            <div class="section-title">📈 月次収支サマリー</div>
+            
+            <div class="dashboard-grid">
+                <div class="metric-card">
+                    <div class="metric-value positive" id="summary-income">¥0</div>
+                    <div class="metric-label">総収入</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value negative" id="summary-expense">¥0</div>
+                    <div class="metric-label">総支出</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="summary-balance">¥0</div>
+                    <div class="metric-label">純収支</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value neutral" id="summary-categories">0</div>
+                    <div class="metric-label">カテゴリ数</div>
+                </div>
+            </div>
+            
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>カテゴリ</th>
+                        <th>収入</th>
+                        <th>支出</th>
+                        <th>純額</th>
+                        <th>構成比</th>
+                    </tr>
+                </thead>
+                <tbody id="category-summary">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #666; font-style: italic;">
+                            データを入力するとカテゴリ別サマリーが表示されます
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // データ管理
+        let transactions = [];
+
+        // 通知表示機能
+        function showNotification(type, message, duration = 3000) {
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, duration);
+        }
+
+        // タブ切り替え（改良版）
+        function showTab(targetId) {
+            console.log('🔄 タブ切り替え:', targetId);
+            
+            // 全てのタブから active クラスを削除
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 全てのコンテンツから active クラスを削除
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // クリックされたタブまたは指定されたタブに active クラスを追加
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // プログラムからの呼び出しの場合
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach((tab, index) => {
+                    const tabText = tab.textContent.toLowerCase();
+                    if (tabText.includes(targetId) || 
+                        (targetId === 'dashboard' && index === 0) ||
+                        (targetId === 'input' && index === 1) ||
+                        (targetId === 'history' && index === 2) ||
+                        (targetId === 'summary' && index === 3)) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
+            
+            // 対応するコンテンツに active クラスを追加
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+                console.log('✅ タブ切り替え成功:', targetId);
+                
+                // タブ切り替え後にデータを更新
+                if (targetId === 'history') {
+                    setTimeout(() => {
+                        updateTransactionList();
+                        console.log('📋 履歴表示を強制更新');
+                    }, 100);
+                }
+            } else {
+                console.error('❌ タブコンテンツが見つかりません:', targetId);
+            }
+        }
+
+        // 全データ更新（強化版）
+        function updateAllDisplays() {
+            console.log('🔄 全データ更新開始');
+            console.log('📊 現在の取引データ:', transactions);
+            
+            try {
+                updateDashboard();
+                console.log('✅ ダッシュボード更新完了');
+                
+                updateTransactionList();
+                console.log('✅ 取引履歴更新完了');
+                
+                updateSummary();
+                console.log('✅ サマリー更新完了');
+                
+            } catch (error) {
+                console.error('❌ データ更新エラー:', error);
+            }
+            
+            console.log('🎯 全データ更新完了');
+        }
+
+        // ダッシュボード更新
+        function updateDashboard() {
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const monthlyTransactions = transactions.filter(t => t.date && t.date.startsWith(currentMonth));
+
+            const totalIncome = monthlyTransactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            const totalExpense = monthlyTransactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            const balance = totalIncome - totalExpense;
+
+            document.getElementById('total-income').textContent = `¥${totalIncome.toLocaleString()}`;
+            document.getElementById('total-expense').textContent = `¥${totalExpense.toLocaleString()}`;
+            document.getElementById('balance').textContent = `¥${balance.toLocaleString()}`;
+            document.getElementById('transaction-count').textContent = monthlyTransactions.length;
+
+            const balanceElement = document.getElementById('balance');
+            balanceElement.className = 'metric-value ' + (balance >= 0 ? 'positive' : 'negative');
+        }
+
+        // 取引履歴更新（強化版）
+        function updateTransactionList() {
+            console.log('📋 取引履歴更新開始');
+            console.log('📊 現在の取引データ数:', transactions.length);
+            
+            const listElement = document.getElementById('transaction-list');
+            
+            if (!listElement) {
+                console.error('❌ transaction-list要素が見つかりません');
+                return;
+            }
+            
+            if (transactions.length === 0) {
+                console.log('📝 データが空のため、空メッセージを表示');
+                listElement.innerHTML = `
+                    <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
+                        まだ取引データがありません
+                    </div>
+                `;
+                return;
+            }
+
+            // 取引データを日付順でソート
+            const sortedTransactions = [...transactions].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateB - dateA; // 新しい順
+            });
+
+            console.log('📅 ソート済み取引データ:', sortedTransactions);
+
+            // HTML生成
+            const transactionHTML = sortedTransactions.map((transaction, index) => {
+                console.log(`📄 取引${index + 1}:`, transaction);
+                return `
+                    <div class="transaction-item">
+                        <div class="transaction-info">
+                            <div class="transaction-category">${transaction.category}</div>
+                            <div class="transaction-date">${transaction.date}${transaction.memo ? ' - ' + transaction.memo : ''}</div>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <div class="transaction-amount ${transaction.type}">
+                                ${transaction.type === 'income' ? '+' : '-'}¥${transaction.amount.toLocaleString()}
+                            </div>
+                            <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" type="button">削除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // DOM更新
+            listElement.innerHTML = transactionHTML;
+            console.log('✅ 取引履歴HTML更新完了');
+            console.log('🔍 更新後のHTML:', listElement.innerHTML.substring(0, 200) + '...');
+        }
+
+        // サマリー更新
+        function updateSummary() {
+            const totalIncome = transactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            const totalExpense = transactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            const balance = totalIncome - totalExpense;
+
+            document.getElementById('summary-income').textContent = `¥${totalIncome.toLocaleString()}`;
+            document.getElementById('summary-expense').textContent = `¥${totalExpense.toLocaleString()}`;
+            document.getElementById('summary-balance').textContent = `¥${balance.toLocaleString()}`;
+
+            const balanceElement = document.getElementById('summary-balance');
+            balanceElement.className = 'metric-value ' + (balance >= 0 ? 'positive' : 'negative');
+
+            updateCategorySummary();
+        }
+
+        // カテゴリ別サマリー更新
+        function updateCategorySummary() {
+            const categories = {};
+            
+            transactions.forEach(t => {
+                if (!categories[t.category]) {
+                    categories[t.category] = { income: 0, expense: 0 };
+                }
+                
+                if (t.type === 'income') {
+                    categories[t.category].income += t.amount || 0;
+                } else {
+                    categories[t.category].expense += t.amount || 0;
+                }
+            });
+
+            const totalAmount = Object.values(categories).reduce((sum, cat) => sum + cat.income + cat.expense, 0);
+            const summaryBody = document.getElementById('category-summary');
+            
+            document.getElementById('summary-categories').textContent = Object.keys(categories).length;
+
+            if (Object.keys(categories).length === 0) {
+                summaryBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #666; font-style: italic;">
+                            データを入力するとカテゴリ別サマリーが表示されます
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            summaryBody.innerHTML = Object.entries(categories)
+                .sort(([,a], [,b]) => (b.income + b.expense) - (a.income + a.expense))
+                .map(([category, data]) => {
+                    const net = data.income - data.expense;
+                    const percentage = totalAmount > 0 ? ((data.income + data.expense) / totalAmount * 100).toFixed(1) : 0;
+                    
+                    return `
+                        <tr>
+                            <td>${category}</td>
+                            <td class="amount">¥${data.income.toLocaleString()}</td>
+                            <td class="amount">¥${data.expense.toLocaleString()}</td>
+                            <td class="amount" style="color: ${net >= 0 ? '#4CAF50' : '#f44336'}">
+                                ¥${net.toLocaleString()}
+                            </td>
+                            <td>${percentage}%</td>
+                        </tr>
+                    `;
+                }).join('');
+        }
+
+        // 取引追加（即時反映対応版）
+        function addTransaction() {
+            console.log('🔄 取引追加処理開始');
+            
+            const type = document.getElementById('transaction-type').value;
+            const category = document.getElementById('category').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const date = document.getElementById('date').value;
+            const memo = document.getElementById('memo').value;
+
+            console.log('📝 入力データ:', { type, category, amount, date, memo });
+
+            // バリデーション
+            if (!amount || amount <= 0) {
+                showNotification('error', '有効な金額を入力してください');
+                console.log('❌ 金額エラー');
+                return;
+            }
+
+            if (!date) {
+                showNotification('error', '日付を選択してください');
+                console.log('❌ 日付エラー');
+                return;
+            }
+
+            if (!category) {
+                showNotification('error', 'カテゴリを選択してください');
+                console.log('❌ カテゴリエラー');
+                return;
+            }
+
+            // 取引データ作成
+            const transaction = {
+                id: Date.now() + Math.random() * 1000,
+                type,
+                category,
+                amount,
+                date,
+                memo: memo || '',
+                timestamp: new Date().toISOString()
+            };
+
+            console.log('📊 作成された取引:', transaction);
+
+            // データ追加
+            transactions.push(transaction);
+            console.log('📋 現在の取引数:', transactions.length);
+
+            // 即座に全画面更新
+            console.log('🔄 画面更新開始');
+            updateDashboard();
+            console.log('✅ ダッシュボード更新完了');
+            
+            updateTransactionList();
+            console.log('✅ 取引履歴更新完了');
+            
+            updateSummary();
+            console.log('✅ サマリー更新完了');
+
+            // フォームクリア
+            clearForm();
+            console.log('🧹 フォームクリア完了');
+
+            // 成功通知
+            showNotification('success', `${type === 'income' ? '収入' : '支出'} ${category} ¥${amount.toLocaleString()} を追加しました`);
+            console.log('✅ 取引追加処理完了');
+
+            // 取引履歴タブに自動切り替え
+            setTimeout(() => {
+                const historyTab = document.querySelector('[onclick*="history"]');
+                if (historyTab) {
+                    showTab('history');
+                    historyTab.classList.add('active');
+                    console.log('📋 取引履歴タブに切り替え');
+                }
+            }, 1000);
+        }
+
+        // フォームクリア
+        function clearForm() {
+            document.getElementById('amount').value = '';
+            document.getElementById('memo').value = '';
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+        }
+
+        // 取引削除
+        function deleteTransaction(id) {
+            const foundTransaction = transactions.find(t => Number(t.id) === Number(id));
+            
+            if (!foundTransaction) {
+                showNotification('error', '取引が見つかりませんでした');
+                return;
+            }
+            
+            if (confirm(`この取引を削除しますか？\n${foundTransaction.category}: ¥${foundTransaction.amount.toLocaleString()}`)) {
+                transactions = transactions.filter(t => Number(t.id) !== Number(id));
+                updateAllDisplays();
+                showNotification('success', '取引を削除しました');
+            }
+        }
+
+        // 全データクリア
+        function clearAllData() {
+            if (confirm('全ての取引データを削除しますか？')) {
+                const count = transactions.length;
+                transactions = [];
+                updateAllDisplays();
+                showNotification('success', `${count}件のデータを削除しました`);
+            }
+        }
+
+        // 土日データ復元
+        function restoreWeekendData() {
+            const saturdayStr = '2025-06-01';
+            const sundayStr = '2025-06-02';
+            
+            const weekendExpenses = [
+                // 土曜日
+                { id: Date.now() + 1001, type: 'expense', category: '食費', amount: 1865, date: saturdayStr, memo: '成城石井', timestamp: new Date().toISOString() },
+                { id: Date.now() + 1002, type: 'expense', category: '食費', amount: 2026, date: saturdayStr, memo: 'いなげや', timestamp: new Date().toISOString() },
+                { id: Date.now() + 1003, type: 'expense', category: '生活費', amount: 437, date: saturdayStr, memo: 'マツキヨ', timestamp: new Date().toISOString() },
+                { id: Date.now() + 1004, type: 'expense', category: 'seohyang支出', amount: 5544, date: saturdayStr, memo: 'Amazon（seohyang利用）', timestamp: new Date().toISOString() },
+                
+                // 日曜日
+                { id: Date.now() + 2001, type: 'expense', category: '生活費', amount: 2860, date: sundayStr, memo: '子供の服', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2002, type: 'expense', category: 'レジャー費', amount: 3500, date: sundayStr, memo: '遊び', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2003, type: 'expense', category: '食費', amount: 5600, date: sundayStr, memo: 'ランチ（焼肉）', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2004, type: 'expense', category: '食費', amount: 804, date: sundayStr, memo: 'カルディ', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2005, type: 'expense', category: '生活費', amount: 1941, date: sundayStr, memo: '雑貨（子供）', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2006, type: 'expense', category: '食費', amount: 4384, date: sundayStr, memo: 'OKマート', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2007, type: 'expense', category: '食費', amount: 1231, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString() },
+                { id: Date.now() + 2008, type: 'expense', category: '食費', amount: 85, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString() }
+            ];
+            
+            const existingKeys = transactions.map(t => `${t.date}-${t.memo}-${t.amount}`);
+            const newExpenses = weekendExpenses.filter(expense => {
+                const key = `${expense.date}-${expense.memo}-${expense.amount}`;
+                return !existingKeys.includes(key);
+            });
+            
+            if (newExpenses.length > 0) {
+                transactions.push(...newExpenses);
+                updateAllDisplays();
+                
+                const totalAmount = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+                showNotification('success', `土日データを復元しました！${newExpenses.length}件・¥${totalAmount.toLocaleString()}を追加`);
+            } else {
+                showNotification('error', '土日のデータは既に登録されています');
+            }
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+            
+            // 初期データとして土日データを自動追加
+            if (transactions.length === 0) {
+                restoreWeekendData();
+            }
+            
+            updateAllDisplays();
+        });
+    </script>
+</body>
+</html>

@@ -352,7 +352,122 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 12px;
-            margin-left: 10px;
+            margin-left: 5px;
+        }
+        
+        .edit-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        /* 編集モーダル */
+        .edit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .edit-modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .edit-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 15px;
+        }
+        
+        .edit-modal-header h3 {
+            color: #333;
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: #f0f0f0;
+        }
+        
+        .edit-form {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .edit-form .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .edit-form label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .edit-form input, .edit-form select {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .edit-form input:focus, .edit-form select:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .edit-form-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .edit-form-buttons .btn {
+            flex: 1;
+            margin: 0;
         }
         
         .summary-table {
@@ -628,12 +743,76 @@
         </div>
     </div>
 
+    <!-- 編集モーダル -->
+    <div id="edit-modal" class="edit-modal hidden">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h3>📝 取引を編集</h3>
+                <button class="close-btn" onclick="closeEditModal()" type="button">×</button>
+            </div>
+            
+            <div class="edit-form">
+                <div class="input-group">
+                    <label>種別</label>
+                    <select id="edit-transaction-type">
+                        <option value="expense">支出</option>
+                        <option value="income">収入</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label>カテゴリ</label>
+                    <select id="edit-category">
+                        <optgroup label="💸 支出">
+                            <option value="食費">食費</option>
+                            <option value="生活費">生活費</option>
+                            <option value="レジャー費">レジャー費</option>
+                            <option value="旅費">旅費</option>
+                            <option value="seohyang支出">seohyang支出</option>
+                            <option value="美容費">美容費</option>
+                            <option value="住宅ローン">住宅ローン</option>
+                            <option value="水道光熱費">水道光熱費</option>
+                            <option value="教育費">教育費</option>
+                            <option value="その他支出">その他支出</option>
+                        </optgroup>
+                        <optgroup label="💰 収入">
+                            <option value="副収入">副収入</option>
+                            <option value="その他収入">その他収入</option>
+                            <option value="給与">給与</option>
+                        </optgroup>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label>金額（円）</label>
+                    <input type="number" id="edit-amount" placeholder="金額を入力">
+                </div>
+                
+                <div class="input-group">
+                    <label>日付</label>
+                    <input type="date" id="edit-date">
+                </div>
+                
+                <div class="input-group">
+                    <label>メモ</label>
+                    <input type="text" id="edit-memo" placeholder="詳細（任意）">
+                </div>
+                
+                <div class="edit-form-buttons">
+                    <button class="btn" onclick="saveEditedTransaction()" type="button">💾 保存</button>
+                    <button class="btn btn-secondary" onclick="closeEditModal()" type="button">❌ キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // データ管理システム - グローバル変数
         let currentUser = '';
         let transactions = [];
+        let editingTransactionId = null; // 編集中の取引ID
         
-        console.log('🏠 家計簿システム v12 - データ永続化版 初期化開始');
+        console.log('🏠 家計簿システム v13 - 編集機能付き 初期化開始');
 
         // 認証管理（暗号化されたユーザー情報）
         const validUsers = {
@@ -669,7 +848,7 @@
 
         function saveToLocalStorage() {
             if (!currentUser) {
-                console.warn('ユーザーが設定されていません');
+                console.error('❌ 保存エラー: ユーザーが設定されていません');
                 return false;
             }
             
@@ -678,19 +857,47 @@
                     user: currentUser,
                     transactions: transactions,
                     lastSaved: new Date().toISOString(),
-                    version: 'v12'
+                    version: 'v13'
                 };
                 
                 const storageKey = getStorageKey();
                 const jsonData = JSON.stringify(dataToSave);
+                
+                console.log('💾 保存試行開始:', {
+                    user: currentUser,
+                    key: storageKey,
+                    transactionCount: transactions.length,
+                    dataSize: (jsonData.length / 1024).toFixed(2) + 'KB'
+                });
+                
+                // ローカルストレージへの保存実行
                 localStorage.setItem(storageKey, jsonData);
                 
-                console.log(`✅ データ保存完了: ${storageKey}, 件数: ${transactions.length}`);
-                console.log('保存されたデータ:', dataToSave);
-                return true;
+                // 保存確認
+                const savedData = localStorage.getItem(storageKey);
+                if (savedData) {
+                    console.log(`✅ 保存成功: ${storageKey}, 件数: ${transactions.length}`);
+                    return true;
+                } else {
+                    console.error('❌ 保存後の確認でデータが見つかりません');
+                    return false;
+                }
+                
             } catch (error) {
-                console.error('❌ データ保存エラー:', error);
-                showNotification('error', 'データの保存に失敗しました');
+                console.error('❌ 保存エラー詳細:', {
+                    error: error.message,
+                    stack: error.stack,
+                    user: currentUser,
+                    transactionCount: transactions.length
+                });
+                
+                // 容量エラーの可能性をチェック
+                if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                    console.error('❌ ストレージ容量不足');
+                    showNotification('error', 'ストレージ容量が不足しています');
+                } else {
+                    showNotification('error', 'データの保存に失敗しました: ' + error.message);
+                }
                 return false;
             }
         }
@@ -853,6 +1060,138 @@
             updateSummary();
         }
 
+        // ==================== 取引編集機能 ====================
+
+        function openEditModal(transactionId) {
+            const transaction = transactions.find(t => Number(t.id) === Number(transactionId));
+            
+            if (!transaction) {
+                showNotification('error', '編集する取引が見つかりませんでした');
+                return;
+            }
+            
+            console.log('✏️ 編集モーダルを開く:', transaction);
+            
+            // 編集中のIDを保存
+            editingTransactionId = transactionId;
+            
+            // フォームに既存データを入力
+            document.getElementById('edit-transaction-type').value = transaction.type;
+            document.getElementById('edit-category').value = transaction.category;
+            document.getElementById('edit-amount').value = transaction.amount;
+            document.getElementById('edit-date').value = transaction.date;
+            document.getElementById('edit-memo').value = transaction.memo || '';
+            
+            // モーダルを表示
+            document.getElementById('edit-modal').classList.remove('hidden');
+            
+            // 金額フィールドにフォーカス
+            setTimeout(() => {
+                document.getElementById('edit-amount').focus();
+                document.getElementById('edit-amount').select();
+            }, 100);
+        }
+
+        function closeEditModal() {
+            console.log('❌ 編集モーダルを閉じる');
+            
+            editingTransactionId = null;
+            document.getElementById('edit-modal').classList.add('hidden');
+            
+            // フォームをクリア
+            document.getElementById('edit-transaction-type').value = 'expense';
+            document.getElementById('edit-category').value = '食費';
+            document.getElementById('edit-amount').value = '';
+            document.getElementById('edit-date').value = '';
+            document.getElementById('edit-memo').value = '';
+        }
+
+        function saveEditedTransaction() {
+            console.log('💾 編集保存処理開始');
+            
+            if (!editingTransactionId) {
+                console.error('❌ 編集対象のIDが設定されていません');
+                showNotification('error', '編集対象の取引が特定できません');
+                return;
+            }
+            
+            console.log('🔍 編集対象ID:', editingTransactionId);
+            
+            const transactionIndex = transactions.findIndex(t => Number(t.id) === Number(editingTransactionId));
+            
+            if (transactionIndex === -1) {
+                console.error('❌ 取引が見つかりません:', editingTransactionId);
+                console.log('📊 現在の取引一覧:', transactions.map(t => ({ id: t.id, category: t.category })));
+                showNotification('error', '編集する取引が見つかりませんでした');
+                closeEditModal();
+                return;
+            }
+            
+            console.log('✅ 取引発見 インデックス:', transactionIndex);
+            
+            // フォームから値を取得
+            const type = document.getElementById('edit-transaction-type').value;
+            const category = document.getElementById('edit-category').value;
+            const amount = parseFloat(document.getElementById('edit-amount').value);
+            const date = document.getElementById('edit-date').value;
+            const memo = document.getElementById('edit-memo').value;
+            
+            console.log('📝 編集フォームの値:', { type, category, amount, date, memo });
+            
+            // バリデーション
+            if (!amount || amount <= 0) {
+                console.warn('⚠️ 金額が無効:', amount);
+                showNotification('error', '有効な金額を入力してください');
+                return;
+            }
+            
+            if (!date) {
+                console.warn('⚠️ 日付が無効:', date);
+                showNotification('error', '日付を選択してください');
+                return;
+            }
+            
+            // 元の取引データを保存（ログ用）
+            const originalTransaction = { ...transactions[transactionIndex] };
+            console.log('📋 編集前のデータ:', originalTransaction);
+            
+            // 取引データを更新
+            transactions[transactionIndex] = {
+                ...transactions[transactionIndex],
+                type,
+                category,
+                amount,
+                date,
+                memo: memo || '',
+                lastModified: new Date().toISOString()
+            };
+            
+            console.log('📋 編集後のデータ:', transactions[transactionIndex]);
+            console.log('📊 全取引データ件数:', transactions.length);
+            
+            // 表示を更新
+            console.log('🔄 表示更新開始');
+            updateAllDisplays();
+            console.log('✅ 表示更新完了');
+            
+            // データを保存
+            console.log('💾 ローカルストレージ保存開始');
+            const saveSuccess = saveToLocalStorage();
+            console.log('💾 保存結果:', saveSuccess);
+            
+            // モーダルを閉じる
+            closeEditModal();
+            
+            // 完了通知
+            if (saveSuccess) {
+                showNotification('success', `${category} ¥${amount.toLocaleString()} を更新・保存しました`);
+                console.log('✅ 編集処理完了');
+            } else {
+                showNotification('error', '取引は更新されましたが、保存に失敗しました');
+                console.error('❌ 編集処理で保存失敗');
+            }
+        }
+
         // ==================== 取引管理 ====================
 
         function addTransaction() {
@@ -994,10 +1333,11 @@
                         <div class="transaction-category">${transaction.category}</div>
                         <div class="transaction-date">${transaction.date}${transaction.memo ? ' - ' + transaction.memo : ''}</div>
                     </div>
-                    <div style="display: flex; align-items: center;">
+                    <div class="action-buttons">
                         <div class="transaction-amount ${transaction.type}">
                             ${transaction.type === 'income' ? '+' : '-'}¥${transaction.amount.toLocaleString()}
                         </div>
+                        <button class="edit-btn" onclick="openEditModal(${transaction.id})" type="button">編集</button>
                         <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" type="button">削除</button>
                     </div>
                 </div>
@@ -1251,7 +1591,7 @@
         // ==================== イベントリスナー ====================
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔐 認証付き家計簿システム v12 初期化完了');
+            console.log('🔐 認証付き家計簿システム v13 初期化完了');
             
             // Enter キーでログイン
             document.getElementById('username').addEventListener('keypress', function(e) {
@@ -1266,43 +1606,156 @@
                 }
             });
             
+            // 編集モーダルのエンターキー処理
+            document.getElementById('edit-amount').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveEditedTransaction();
+                }
+            });
+            
+            document.getElementById('edit-memo').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveEditedTransaction();
+                }
+            });
+            
+            // 編集モーダルの背景クリックで閉じる
+            document.getElementById('edit-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEditModal();
+                }
+            });
+            
+            // ESCキーで編集モーダルを閉じる
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('edit-modal');
+                    if (!modal.classList.contains('hidden')) {
+                        closeEditModal();
+                    }
+                }
+            });
+            
             // ログイン画面にフォーカス
             document.getElementById('username').focus();
             
-            console.log('📊 システム準備完了');
+            console.log('📊 システム準備完了 - 編集機能付き');
         });
 
         // ==================== デバッグ機能 ====================
         
         // デバッグ用：ローカルストレージの内容を確認
         function debugStorage() {
+            console.log('🔍=== ストレージデバッグ開始 ===');
+            
             if (currentUser) {
                 const storageKey = getStorageKey();
                 const data = localStorage.getItem(storageKey);
-                console.log('🔍 ストレージデバッグ:', storageKey);
-                console.log('💾 保存データ:', data);
+                console.log('👤 現在のユーザー:', currentUser);
+                console.log('🔑 ストレージキー:', storageKey);
+                console.log('📊 メモリ内取引件数:', transactions.length);
+                console.log('💾 保存データ:', data ? 'あり' : 'なし');
+                
                 if (data) {
-                    console.log('📊 パース済み:', JSON.parse(data));
+                    try {
+                        const parsed = JSON.parse(data);
+                        console.log('📋 保存済み取引件数:', parsed.transactions ? parsed.transactions.length : 0);
+                        console.log('📅 最終保存日時:', parsed.lastSaved);
+                        console.log('🏷 バージョン:', parsed.version);
+                        console.log('📄 生データサイズ:', (data.length / 1024).toFixed(2) + 'KB');
+                        console.log('📊 パース済みデータ:', parsed);
+                    } catch (e) {
+                        console.error('❌ データ解析エラー:', e);
+                    }
+                } else {
+                    console.log('⚠️ 保存データが見つかりません');
                 }
             } else {
                 console.log('❌ ユーザーが未設定');
             }
+            
+            console.log('🔍=== ストレージデバッグ終了 ===');
         }
 
         // デバッグ用：全ストレージの確認
         function debugAllStorage() {
-            console.log('🔍 全ストレージ内容:');
+            console.log('🔍=== 全ストレージ内容 ===');
+            console.log('📊 ストレージ使用状況:');
+            
+            let totalSize = 0;
+            let householdCount = 0;
+            
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                const size = (value.length + key.length) * 2; // UTF-16
+                totalSize += size;
+                
                 if (key.startsWith('household_budget_')) {
-                    console.log(key, ':', localStorage.getItem(key));
+                    householdCount++;
+                    console.log(`🏠 ${key}: ${(size/1024).toFixed(2)}KB`);
                 }
             }
+            
+            console.log(`📈 家計簿データ: ${householdCount}件`);
+            console.log(`💾 総使用量: ${(totalSize/1024).toFixed(2)}KB`);
+            console.log(`🆓 推定残容量: ${((10*1024*1024 - totalSize)/1024/1024).toFixed(2)}MB`);
+            console.log('🔍=== 全ストレージ終了 ===');
+        }
+
+        // デバッグ用：取引データの整合性チェック
+        function debugTransactionIntegrity() {
+            console.log('🔍=== 取引データ整合性チェック ===');
+            console.log('📊 メモリ内取引件数:', transactions.length);
+            
+            if (transactions.length > 0) {
+                console.log('📋 最初の取引:', transactions[0]);
+                console.log('📋 最後の取引:', transactions[transactions.length - 1]);
+                
+                // IDの重複チェック
+                const ids = transactions.map(t => t.id);
+                const uniqueIds = [...new Set(ids)];
+                if (ids.length !== uniqueIds.length) {
+                    console.warn('⚠️ 重複IDが検出されました');
+                } else {
+                    console.log('✅ ID重複なし');
+                }
+                
+                // 必須フィールドチェック
+                const invalidTransactions = transactions.filter(t => 
+                    !t.id || !t.type || !t.category || !t.amount || !t.date
+                );
+                
+                if (invalidTransactions.length > 0) {
+                    console.warn('⚠️ 不正な取引データ:', invalidTransactions);
+                } else {
+                    console.log('✅ 全取引データ正常');
+                }
+            }
+            
+            console.log('🔍=== 整合性チェック終了 ===');
+        }
+
+        // 強制保存テスト
+        function forceSaveTest() {
+            console.log('🧪=== 強制保存テスト開始 ===');
+            const result = saveToLocalStorage();
+            console.log('💾 保存テスト結果:', result);
+            
+            if (result) {
+                console.log('✅ 保存成功');
+                debugStorage();
+            } else {
+                console.error('❌ 保存失敗');
+            }
+            console.log('🧪=== 強制保存テスト終了 ===');
         }
 
         // グローバルスコープでデバッグ関数を利用可能にする
         window.debugStorage = debugStorage;
         window.debugAllStorage = debugAllStorage;
+        window.debugTransactionIntegrity = debugTransactionIntegrity;
+        window.forceSaveTest = forceSaveTest;
         
     </script>
 </body>

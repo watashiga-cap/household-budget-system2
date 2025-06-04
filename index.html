@@ -479,7 +479,7 @@
     <!-- メイン画面 -->
     <div id="main-screen" class="container hidden">
         <div class="header">
-            <button class="logout-btn" onclick="forceLogout(); return false;" type="button" title="確認なしでログアウト">🚪 ログアウト</button>
+            <button class="logout-btn" onclick="logout()" type="button" title="ログアウト">🚪 ログアウト</button>
             <h1>💰 家計簿管理システム</h1>
             <p>ようこそ、<span id="current-user"></span>さん</p>
         </div>
@@ -713,10 +713,15 @@
                 // フォームクリア
                 document.getElementById('username').value = '';
                 document.getElementById('password').value = '';
+                
+                // ログインエラーメッセージを非表示
                 const errorDiv = document.getElementById('login-error');
                 if (errorDiv) {
                     errorDiv.classList.add('hidden');
                 }
+                
+                // メイン画面をリセット
+                resetMainScreen();
                 
                 // 画面切り替え
                 const mainScreen = document.getElementById('main-screen');
@@ -726,9 +731,15 @@
                     mainScreen.classList.add('hidden');
                     loginScreen.classList.remove('hidden');
                     
+                    // ダッシュボードタブをアクティブに戻す
+                    resetTabs();
+                    
                     // ユーザー名フィールドにフォーカス
                     setTimeout(() => {
-                        document.getElementById('username').focus();
+                        const usernameField = document.getElementById('username');
+                        if (usernameField) {
+                            usernameField.focus();
+                        }
                     }, 100);
                     
                     showNotification('success', 'ログアウトしました');
@@ -738,6 +749,68 @@
                 }
             } else {
                 console.log('ログアウトキャンセル');
+            }
+        }
+
+        // メイン画面のリセット
+        function resetMainScreen() {
+            // ダッシュボードの値をリセット
+            document.getElementById('total-income').textContent = '¥0';
+            document.getElementById('total-expense').textContent = '¥0';
+            document.getElementById('balance').textContent = '¥0';
+            document.getElementById('transaction-count').textContent = '0';
+            
+            // サマリーの値をリセット
+            document.getElementById('summary-income').textContent = '¥0';
+            document.getElementById('summary-expense').textContent = '¥0';
+            document.getElementById('summary-balance').textContent = '¥0';
+            document.getElementById('summary-categories').textContent = '0';
+            
+            // 取引履歴をリセット
+            const transactionList = document.getElementById('transaction-list');
+            if (transactionList) {
+                transactionList.innerHTML = `
+                    <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
+                        まだ取引データがありません
+                    </div>
+                `;
+            }
+            
+            // カテゴリサマリーをリセット
+            const categorySummary = document.getElementById('category-summary');
+            if (categorySummary) {
+                categorySummary.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #666; font-style: italic;">
+                            データを入力するとカテゴリ別サマリーが表示されます
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // 入力フォームをクリア
+            clearForm();
+        }
+
+        // タブをリセット
+        function resetTabs() {
+            // 全てのタブを非アクティブに
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 全てのタブコンテンツを非表示に
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // ダッシュボードタブをアクティブに
+            const dashboardTab = document.querySelector('[onclick*="dashboard"]');
+            const dashboardContent = document.getElementById('dashboard');
+            
+            if (dashboardTab && dashboardContent) {
+                dashboardTab.classList.add('active');
+                dashboardContent.classList.add('active');
             }
         }
 

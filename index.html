@@ -659,6 +659,37 @@
         let currentUser = '';
         let transactions = [];
 
+        // データ永続化機能
+        function saveDataToStorage() {
+            if (currentUser) {
+                const userData = {
+                    user: currentUser,
+                    transactions: transactions,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem(`household_data_${currentUser}`, JSON.stringify(userData));
+                console.log('データを保存しました:', transactions.length, '件');
+            }
+        }
+
+        function loadDataFromStorage() {
+            if (currentUser) {
+                const savedData = localStorage.getItem(`household_data_${currentUser}`);
+                if (savedData) {
+                    try {
+                        const userData = JSON.parse(savedData);
+                        transactions = userData.transactions || [];
+                        console.log('データを読み込みました:', transactions.length, '件');
+                        return true;
+                    } catch (e) {
+                        console.error('データ読み込みエラー:', e);
+                        transactions = [];
+                    }
+                }
+            }
+            return false;
+        }
+
         // ログイン処理
         function login() {
             const username = document.getElementById('username').value.trim();
@@ -681,6 +712,9 @@
                 currentUser = username;
                 document.getElementById('current-user').textContent = username;
                 
+                // 保存されたデータを読み込み
+                loadDataFromStorage();
+                
                 // 画面切り替え
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-screen').classList.remove('hidden');
@@ -689,6 +723,9 @@
                 initializeData();
                 
                 showNotification('success', `ようこそ、${username}さん！`);
+                if (transactions.length > 0) {
+                    showNotification('success', `保存されていた${transactions.length}件のデータを読み込みました`, 2000);
+                }
                 console.log('ログイン成功:', username);
             } else {
                 showLoginError('ユーザーIDまたはパスワードが正しくありません');
@@ -703,12 +740,15 @@
         function logout() {
             console.log('ログアウト処理開始');
             
-            if (confirm('ログアウトしますか？データは保存されません。')) {
+            if (confirm('ログアウトしますか？データは自動的に保存されます。')) {
                 console.log('ログアウト確認OK');
                 
-                // データ初期化
+                // データを保存してからログアウト
+                saveDataToStorage();
+                
+                // ユーザー情報のみクリア（取引データは保持）
+                const savedTransactions = [...transactions]; // データをバックアップ
                 currentUser = '';
-                transactions = [];
                 
                 // フォームクリア
                 document.getElementById('username').value = '';
@@ -720,8 +760,8 @@
                     errorDiv.classList.add('hidden');
                 }
                 
-                // メイン画面をリセット
-                resetMainScreen();
+                // メイン画面をリセット（データは消さない）
+                resetMainScreenForLogout();
                 
                 // 画面切り替え
                 const mainScreen = document.getElementById('main-screen');
@@ -742,7 +782,7 @@
                         }
                     }, 100);
                     
-                    showNotification('success', 'ログアウトしました');
+                    showNotification('success', `データを保存してログアウトしました（${savedTransactions.length}件保存）`);
                     console.log('ログアウト完了');
                 } else {
                     console.error('画面要素が見つかりません');
@@ -752,9 +792,9 @@
             }
         }
 
-        // メイン画面のリセット
-        function resetMainScreen() {
-            // ダッシュボードの値をリセット
+        // メイン画面のリセット（ログアウト用）
+        function resetMainScreenForLogout() {
+            // 表示だけをリセット（データは保持）
             document.getElementById('total-income').textContent = '¥0';
             document.getElementById('total-expense').textContent = '¥0';
             document.getElementById('balance').textContent = '¥0';
@@ -790,6 +830,13 @@
             
             // 入力フォームをクリア
             clearForm();
+        }
+
+        // メイン画面のリセット（全データクリア用）
+        function resetMainScreen() {
+            // データも完全にクリア
+            transactions = [];
+            resetMainScreenForLogout();
         }
 
         // タブをリセット
@@ -886,7 +933,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('date').value = today;
             
-            // 土日データを自動追加
+            // 既存データがない場合のみ土日データを自動追加
             if (transactions.length === 0) {
                 restoreWeekendData();
             }
@@ -1061,6 +1108,7 @@
 
             transactions.push(transaction);
             updateAllDisplays();
+            saveDataToStorage(); // データを保存
             clearForm();
             showNotification('success', `${type === 'income' ? '収入' : '支出'} ${category} ¥${amount.toLocaleString()} を追加しました`);
 
@@ -1094,16 +1142,18 @@
             if (confirm(`この取引を削除しますか？\n${foundTransaction.category}: ¥${foundTransaction.amount.toLocaleString()}`)) {
                 transactions = transactions.filter(t => Number(t.id) !== Number(id));
                 updateAllDisplays();
+                saveDataToStorage(); // データを保存
                 showNotification('success', '取引を削除しました');
             }
         }
 
         // 全データクリア
         function clearAllData() {
-            if (confirm('全ての取引データを削除しますか？')) {
+            if (confirm('全ての取引データを削除しますか？この操作は元に戻せません。')) {
                 const count = transactions.length;
                 transactions = [];
                 updateAllDisplays();
+                saveDataToStorage(); // 空データを保存
                 showNotification('success', `${count}件のデータを削除しました`);
             }
         }
@@ -1140,6 +1190,7 @@
             if (newExpenses.length > 0) {
                 transactions.push(...newExpenses);
                 updateAllDisplays();
+                saveDataToStorage(); // データを保存
                 
                 const totalAmount = newExpenses.reduce((sum, e) => sum + e.amount, 0);
                 showNotification('success', `土日データを復元しました！${newExpenses.length}件・¥${totalAmount.toLocaleString()}を追加`);

@@ -629,9 +629,14 @@
     </div>
 
     <script>
+        // データ管理システム - グローバル変数
+        let currentUser = '';
+        let transactions = [];
+        
+        console.log('🏠 家計簿システム v12 - データ永続化版 初期化開始');
+
         // 認証管理（暗号化されたユーザー情報）
         const validUsers = {
-            // ハッシュ化されたユーザー情報（本番環境では適切な暗号化を使用）
             'YWRtaW4=': 'cGFzc3dvcmQ=',
             'c2VvaHlhbmc=': 'MTIzNDU2',
             'dXNlcjE=': 'bXlwYXNzd29yZA==',
@@ -656,54 +661,88 @@
             }
         }
 
-        let currentUser = '';
-        let transactions = [];
+        // ==================== データ永続化システム ====================
+        
+        function getStorageKey() {
+            return `household_budget_${currentUser}`;
+        }
 
-        // データ永続化機能
-        function saveDataToStorage() {
-            if (currentUser) {
-                const userData = {
+        function saveToLocalStorage() {
+            if (!currentUser) {
+                console.warn('ユーザーが設定されていません');
+                return false;
+            }
+            
+            try {
+                const dataToSave = {
                     user: currentUser,
                     transactions: transactions,
-                    lastSaved: new Date().toISOString()
+                    lastSaved: new Date().toISOString(),
+                    version: 'v12'
                 };
-                localStorage.setItem(`household_data_${currentUser}`, JSON.stringify(userData));
-                console.log('データを保存しました:', transactions.length, '件');
+                
+                const storageKey = getStorageKey();
+                const jsonData = JSON.stringify(dataToSave);
+                localStorage.setItem(storageKey, jsonData);
+                
+                console.log(`✅ データ保存完了: ${storageKey}, 件数: ${transactions.length}`);
+                console.log('保存されたデータ:', dataToSave);
+                return true;
+            } catch (error) {
+                console.error('❌ データ保存エラー:', error);
+                showNotification('error', 'データの保存に失敗しました');
+                return false;
             }
         }
 
-        function loadDataFromStorage() {
-            if (currentUser) {
-                const savedData = localStorage.getItem(`household_data_${currentUser}`);
-                if (savedData) {
-                    try {
-                        const userData = JSON.parse(savedData);
-                        transactions = userData.transactions || [];
-                        console.log('データを読み込みました:', transactions.length, '件');
-                        return true;
-                    } catch (e) {
-                        console.error('データ読み込みエラー:', e);
-                        transactions = [];
-                    }
+        function loadFromLocalStorage() {
+            if (!currentUser) {
+                console.warn('ユーザーが設定されていません');
+                return false;
+            }
+            
+            try {
+                const storageKey = getStorageKey();
+                const savedData = localStorage.getItem(storageKey);
+                
+                if (!savedData) {
+                    console.log(`📝 新規ユーザー: ${currentUser}`);
+                    transactions = [];
+                    return false;
                 }
+                
+                const parsedData = JSON.parse(savedData);
+                
+                if (parsedData && parsedData.transactions && Array.isArray(parsedData.transactions)) {
+                    transactions = parsedData.transactions;
+                    console.log(`✅ データ読み込み完了: ${storageKey}, 件数: ${transactions.length}`);
+                    console.log('読み込まれたデータ:', parsedData);
+                    return true;
+                } else {
+                    console.warn('❌ 不正なデータ形式');
+                    transactions = [];
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ データ読み込みエラー:', error);
+                transactions = [];
+                return false;
             }
-            return false;
         }
 
-        // ログイン処理
+        // ==================== ログイン・ログアウト ====================
+
         function login() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('login-error');
 
-            console.log('ログイン試行:', username);
+            console.log('🔐 ログイン試行:', username);
 
             if (!username || !password) {
                 showLoginError('ユーザーIDとパスワードを入力してください');
                 return;
             }
 
-            // ユーザー認証（Base64エンコードで比較）
             const encodedUsername = encode(username);
             const encodedPassword = encode(password);
             
@@ -712,45 +751,50 @@
                 currentUser = username;
                 document.getElementById('current-user').textContent = username;
                 
+                console.log('✅ ログイン成功:', username);
+                
                 // 保存されたデータを読み込み
-                loadDataFromStorage();
+                const dataLoaded = loadFromLocalStorage();
                 
                 // 画面切り替え
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-screen').classList.remove('hidden');
                 
                 // 初期データ設定
-                initializeData();
+                initializeUserData();
                 
+                // 通知
                 showNotification('success', `ようこそ、${username}さん！`);
-                if (transactions.length > 0) {
-                    showNotification('success', `保存されていた${transactions.length}件のデータを読み込みました`, 2000);
+                
+                if (dataLoaded) {
+                    setTimeout(() => {
+                        showNotification('success', `保存されていた${transactions.length}件のデータを読み込みました`, 3000);
+                    }, 1000);
                 }
-                console.log('ログイン成功:', username);
+                
             } else {
                 showLoginError('ユーザーIDまたはパスワードが正しくありません');
-                console.log('ログイン失敗:', username);
+                console.log('❌ ログイン失敗:', username);
             }
 
             // パスワードフィールドをクリア
             document.getElementById('password').value = '';
         }
 
-        // ログアウト処理（修正版）
         function logout() {
-            console.log('ログアウト処理開始');
+            console.log('🚪 ログアウト処理開始');
             
             if (confirm('ログアウトしますか？データは自動的に保存されます。')) {
-                console.log('ログアウト確認OK');
+                console.log('✅ ログアウト確認OK');
                 
-                // データを保存してからログアウト
-                saveDataToStorage();
+                // データを保存
+                const saveSuccess = saveToLocalStorage();
+                const dataCount = transactions.length;
                 
-                // ユーザー情報のみクリア（取引データは保持）
-                const savedTransactions = [...transactions]; // データをバックアップ
+                // ログアウト処理
                 currentUser = '';
                 
-                // フォームクリア
+                // フォームをクリア
                 document.getElementById('username').value = '';
                 document.getElementById('password').value = '';
                 
@@ -760,195 +804,153 @@
                     errorDiv.classList.add('hidden');
                 }
                 
-                // メイン画面をリセット（データは消さない）
-                resetMainScreenForLogout();
-                
                 // 画面切り替え
-                const mainScreen = document.getElementById('main-screen');
-                const loginScreen = document.getElementById('login-screen');
+                document.getElementById('main-screen').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
                 
-                if (mainScreen && loginScreen) {
-                    mainScreen.classList.add('hidden');
-                    loginScreen.classList.remove('hidden');
-                    
-                    // ダッシュボードタブをアクティブに戻す
-                    resetTabs();
-                    
-                    // ユーザー名フィールドにフォーカス
-                    setTimeout(() => {
-                        const usernameField = document.getElementById('username');
-                        if (usernameField) {
-                            usernameField.focus();
-                        }
-                    }, 100);
-                    
-                    showNotification('success', `データを保存してログアウトしました（${savedTransactions.length}件保存）`);
-                    console.log('ログアウト完了');
-                } else {
-                    console.error('画面要素が見つかりません');
-                }
-            } else {
-                console.log('ログアウトキャンセル');
-            }
-        }
-
-        // メイン画面のリセット（ログアウト用）
-        function resetMainScreenForLogout() {
-            // 表示だけをリセット（データは保持）
-            document.getElementById('total-income').textContent = '¥0';
-            document.getElementById('total-expense').textContent = '¥0';
-            document.getElementById('balance').textContent = '¥0';
-            document.getElementById('transaction-count').textContent = '0';
-            
-            // サマリーの値をリセット
-            document.getElementById('summary-income').textContent = '¥0';
-            document.getElementById('summary-expense').textContent = '¥0';
-            document.getElementById('summary-balance').textContent = '¥0';
-            document.getElementById('summary-categories').textContent = '0';
-            
-            // 取引履歴をリセット
-            const transactionList = document.getElementById('transaction-list');
-            if (transactionList) {
-                transactionList.innerHTML = `
-                    <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
-                        まだ取引データがありません
-                    </div>
-                `;
-            }
-            
-            // カテゴリサマリーをリセット
-            const categorySummary = document.getElementById('category-summary');
-            if (categorySummary) {
-                categorySummary.innerHTML = `
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #666; font-style: italic;">
-                            データを入力するとカテゴリ別サマリーが表示されます
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            // 入力フォームをクリア
-            clearForm();
-        }
-
-        // メイン画面のリセット（全データクリア用）
-        function resetMainScreen() {
-            // データも完全にクリア
-            transactions = [];
-            resetMainScreenForLogout();
-        }
-
-        // タブをリセット
-        function resetTabs() {
-            // 全てのタブを非アクティブに
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // 全てのタブコンテンツを非表示に
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // ダッシュボードタブをアクティブに
-            const dashboardTab = document.querySelector('[onclick*="dashboard"]');
-            const dashboardContent = document.getElementById('dashboard');
-            
-            if (dashboardTab && dashboardContent) {
-                dashboardTab.classList.add('active');
-                dashboardContent.classList.add('active');
-            }
-        }
-
-        // ログインエラー表示
-        function showLoginError(message) {
-            const errorDiv = document.getElementById('login-error');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                errorDiv.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Enter キーでログイン
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('username').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    document.getElementById('password').focus();
-                }
-            });
-            
-            document.getElementById('password').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    login();
-                }
-            });
-        });
-
-        // 通知表示機能
-        function showNotification(type, message, duration = 3000) {
-            const existingNotification = document.querySelector('.notification');
-            if (existingNotification) {
-                existingNotification.remove();
-            }
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 100);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
+                // タブをリセット
+                resetTabs();
+                
+                // ユーザー名フィールドにフォーカス
                 setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
+                    const usernameField = document.getElementById('username');
+                    if (usernameField) {
+                        usernameField.focus();
                     }
-                }, 300);
-            }, duration);
+                }, 100);
+                
+                // 完了通知
+                if (saveSuccess) {
+                    showNotification('success', `データを保存してログアウトしました（${dataCount}件保存）`);
+                } else {
+                    showNotification('error', 'データ保存に失敗しましたが、ログアウトしました');
+                }
+                
+                console.log('✅ ログアウト完了');
+            } else {
+                console.log('⏸ ログアウトキャンセル');
+            }
         }
 
-        // タブ切り替え
-        function showTab(targetId) {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            event.target.classList.add('active');
-            document.getElementById(targetId).classList.add('active');
-        }
+        // ==================== 初期化・データ管理 ====================
 
-        // 初期データ設定
-        function initializeData() {
+        function initializeUserData() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('date').value = today;
             
-            // 既存データがない場合のみ土日データを自動追加
+            // データがない場合のみ土日データを追加
             if (transactions.length === 0) {
-                restoreWeekendData();
+                console.log('📝 新規ユーザーのため土日データを追加');
+                addInitialWeekendData();
             }
             
             updateAllDisplays();
         }
 
-        // 全データ更新
         function updateAllDisplays() {
             updateDashboard();
             updateTransactionList();
             updateSummary();
         }
 
-        // ダッシュボード更新
+        // ==================== 取引管理 ====================
+
+        function addTransaction() {
+            const type = document.getElementById('transaction-type').value;
+            const category = document.getElementById('category').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const date = document.getElementById('date').value;
+            const memo = document.getElementById('memo').value;
+
+            if (!amount || amount <= 0) {
+                showNotification('error', '有効な金額を入力してください');
+                return;
+            }
+
+            if (!date) {
+                showNotification('error', '日付を選択してください');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now() + Math.random() * 1000,
+                type,
+                category,
+                amount,
+                date,
+                memo: memo || '',
+                timestamp: new Date().toISOString(),
+                user: currentUser
+            };
+
+            console.log('➕ 取引追加:', transaction);
+            
+            transactions.push(transaction);
+            updateAllDisplays();
+            
+            // データを保存
+            const saveSuccess = saveToLocalStorage();
+            
+            clearForm();
+            
+            if (saveSuccess) {
+                showNotification('success', `${type === 'income' ? '収入' : '支出'} ${category} ¥${amount.toLocaleString()} を追加・保存しました`);
+            } else {
+                showNotification('error', '取引は追加されましたが、保存に失敗しました');
+            }
+
+            // 取引履歴タブに自動切り替え
+            setTimeout(() => {
+                showTabByName('history');
+            }, 1000);
+        }
+
+        function deleteTransaction(id) {
+            const foundTransaction = transactions.find(t => Number(t.id) === Number(id));
+            
+            if (!foundTransaction) {
+                showNotification('error', '取引が見つかりませんでした');
+                return;
+            }
+            
+            if (confirm(`この取引を削除しますか？\n${foundTransaction.category}: ¥${foundTransaction.amount.toLocaleString()}`)) {
+                console.log('🗑 取引削除:', foundTransaction);
+                
+                transactions = transactions.filter(t => Number(t.id) !== Number(id));
+                updateAllDisplays();
+                
+                // データを保存
+                const saveSuccess = saveToLocalStorage();
+                
+                if (saveSuccess) {
+                    showNotification('success', '取引を削除・保存しました');
+                } else {
+                    showNotification('error', '取引は削除されましたが、保存に失敗しました');
+                }
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('全ての取引データを削除しますか？この操作は元に戻せません。')) {
+                const count = transactions.length;
+                console.log('🗑 全データクリア:', count, '件');
+                
+                transactions = [];
+                updateAllDisplays();
+                
+                // 空データを保存
+                const saveSuccess = saveToLocalStorage();
+                
+                if (saveSuccess) {
+                    showNotification('success', `${count}件のデータを削除・保存しました`);
+                } else {
+                    showNotification('error', 'データは削除されましたが、保存に失敗しました');
+                }
+            }
+        }
+
+        // ==================== UI更新機能 ====================
+
         function updateDashboard() {
             const currentMonth = new Date().toISOString().slice(0, 7);
             const monthlyTransactions = transactions.filter(t => t.date && t.date.startsWith(currentMonth));
@@ -972,7 +974,6 @@
             balanceElement.className = 'metric-value ' + (balance >= 0 ? 'positive' : 'negative');
         }
 
-        // 取引履歴更新
         function updateTransactionList() {
             const listElement = document.getElementById('transaction-list');
             
@@ -1003,7 +1004,6 @@
             `).join('');
         }
 
-        // サマリー更新
         function updateSummary() {
             const totalIncome = transactions
                 .filter(t => t.type === 'income')
@@ -1025,7 +1025,6 @@
             updateCategorySummary();
         }
 
-        // カテゴリ別サマリー更新
         function updateCategorySummary() {
             const categories = {};
             
@@ -1077,52 +1076,55 @@
                 }).join('');
         }
 
-        // 取引追加
-        function addTransaction() {
-            const type = document.getElementById('transaction-type').value;
-            const category = document.getElementById('category').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const date = document.getElementById('date').value;
-            const memo = document.getElementById('memo').value;
+        // ==================== UI操作・ユーティリティ ====================
 
-            if (!amount || amount <= 0) {
-                showNotification('error', '有効な金額を入力してください');
-                return;
-            }
-
-            if (!date) {
-                showNotification('error', '日付を選択してください');
-                return;
-            }
-
-            const transaction = {
-                id: Date.now() + Math.random() * 1000,
-                type,
-                category,
-                amount,
-                date,
-                memo: memo || '',
-                timestamp: new Date().toISOString(),
-                user: currentUser
-            };
-
-            transactions.push(transaction);
-            updateAllDisplays();
-            saveDataToStorage(); // データを保存
-            clearForm();
-            showNotification('success', `${type === 'income' ? '収入' : '支出'} ${category} ¥${amount.toLocaleString()} を追加しました`);
-
-            // 取引履歴タブに自動切り替え
-            setTimeout(() => {
-                const historyTab = document.querySelector('[onclick*="history"]');
-                if (historyTab) {
-                    showTab('history');
-                    historyTab.classList.add('active');
-                }
-            }, 1000);
+        function showTab(targetId) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            event.target.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
         }
 
-        // フォームクリア
+        function showTabByName(tabName) {
+            const tabButton = document.querySelector(`[onclick*="${tabName}"]`);
+            if (tabButton) {
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                tabButton.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+            }
+        }
+
+        function resetTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const dashboardTab = document.querySelector('[onclick*="dashboard"]');
+            const dashboardContent = document.getElementById('dashboard');
+            
+            if (dashboardTab && dashboardContent) {
+                dashboardTab.classList.add('active');
+                dashboardContent.classList.add('active');
+            }
+        }
+
         function clearForm() {
             document.getElementById('amount').value = '';
             document.getElementById('memo').value = '';
@@ -1130,35 +1132,73 @@
             document.getElementById('date').value = today;
         }
 
-        // 取引削除
-        function deleteTransaction(id) {
-            const foundTransaction = transactions.find(t => Number(t.id) === Number(id));
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
             
-            if (!foundTransaction) {
-                showNotification('error', '取引が見つかりませんでした');
-                return;
-            }
-            
-            if (confirm(`この取引を削除しますか？\n${foundTransaction.category}: ¥${foundTransaction.amount.toLocaleString()}`)) {
-                transactions = transactions.filter(t => Number(t.id) !== Number(id));
-                updateAllDisplays();
-                saveDataToStorage(); // データを保存
-                showNotification('success', '取引を削除しました');
-            }
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
         }
 
-        // 全データクリア
-        function clearAllData() {
-            if (confirm('全ての取引データを削除しますか？この操作は元に戻せません。')) {
-                const count = transactions.length;
-                transactions = [];
-                updateAllDisplays();
-                saveDataToStorage(); // 空データを保存
-                showNotification('success', `${count}件のデータを削除しました`);
+        function showNotification(type, message, duration = 3000) {
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
             }
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, duration);
         }
 
-        // 土日データ復元
+        // ==================== 土日データ復元機能 ====================
+
+        function addInitialWeekendData() {
+            const saturdayStr = '2025-06-01';
+            const sundayStr = '2025-06-02';
+            
+            const weekendExpenses = [
+                // 土曜日
+                { id: Date.now() + 1001, type: 'expense', category: '食費', amount: 1865, date: saturdayStr, memo: '成城石井', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1002, type: 'expense', category: '食費', amount: 2026, date: saturdayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1003, type: 'expense', category: '生活費', amount: 437, date: saturdayStr, memo: 'マツキヨ', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1004, type: 'expense', category: 'seohyang支出', amount: 5544, date: saturdayStr, memo: 'Amazon（seohyang利用）', timestamp: new Date().toISOString(), user: currentUser },
+                
+                // 日曜日
+                { id: Date.now() + 2001, type: 'expense', category: '生活費', amount: 2860, date: sundayStr, memo: '子供の服', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2002, type: 'expense', category: 'レジャー費', amount: 3500, date: sundayStr, memo: '遊び', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2003, type: 'expense', category: '食費', amount: 5600, date: sundayStr, memo: 'ランチ（焼肉）', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2004, type: 'expense', category: '食費', amount: 804, date: sundayStr, memo: 'カルディ', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2005, type: 'expense', category: '生活費', amount: 1941, date: sundayStr, memo: '雑貨（子供）', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2006, type: 'expense', category: '食費', amount: 4384, date: sundayStr, memo: 'OKマート', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2007, type: 'expense', category: '食費', amount: 1231, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2008, type: 'expense', category: '食費', amount: 85, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser }
+            ];
+            
+            transactions = weekendExpenses;
+            console.log('📝 初期土日データを追加:', transactions.length, '件');
+            
+            // データを保存
+            saveToLocalStorage();
+        }
+
         function restoreWeekendData() {
             const saturdayStr = '2025-06-01';
             const sundayStr = '2025-06-02';
@@ -1188,24 +1228,82 @@
             });
             
             if (newExpenses.length > 0) {
+                console.log('🔄 土日データ復元:', newExpenses.length, '件');
+                
                 transactions.push(...newExpenses);
                 updateAllDisplays();
-                saveDataToStorage(); // データを保存
+                
+                // データを保存
+                const saveSuccess = saveToLocalStorage();
                 
                 const totalAmount = newExpenses.reduce((sum, e) => sum + e.amount, 0);
-                showNotification('success', `土日データを復元しました！${newExpenses.length}件・¥${totalAmount.toLocaleString()}を追加`);
+                
+                if (saveSuccess) {
+                    showNotification('success', `土日データを復元・保存しました！${newExpenses.length}件・¥${totalAmount.toLocaleString()}を追加`);
+                } else {
+                    showNotification('error', 'データは復元されましたが、保存に失敗しました');
+                }
             } else {
                 showNotification('error', '土日のデータは既に登録されています');
             }
         }
 
-        // 初期化
+        // ==================== イベントリスナー ====================
+
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔐 認証付き家計簿システム初期化完了');
+            console.log('🔐 認証付き家計簿システム v12 初期化完了');
+            
+            // Enter キーでログイン
+            document.getElementById('username').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('password').focus();
+                }
+            });
+            
+            document.getElementById('password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
             
             // ログイン画面にフォーカス
             document.getElementById('username').focus();
+            
+            console.log('📊 システム準備完了');
         });
+
+        // ==================== デバッグ機能 ====================
+        
+        // デバッグ用：ローカルストレージの内容を確認
+        function debugStorage() {
+            if (currentUser) {
+                const storageKey = getStorageKey();
+                const data = localStorage.getItem(storageKey);
+                console.log('🔍 ストレージデバッグ:', storageKey);
+                console.log('💾 保存データ:', data);
+                if (data) {
+                    console.log('📊 パース済み:', JSON.parse(data));
+                }
+            } else {
+                console.log('❌ ユーザーが未設定');
+            }
+        }
+
+        // デバッグ用：全ストレージの確認
+        function debugAllStorage() {
+            console.log('🔍 全ストレージ内容:');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('household_budget_')) {
+                    console.log(key, ':', localStorage.getItem(key));
+                }
+            }
+        }
+
+        // グローバルスコープでデバッグ関数を利用可能にする
+        window.debugStorage = debugStorage;
+        window.debugAllStorage = debugAllStorage;
+        
     </script>
 </body>
 </html>

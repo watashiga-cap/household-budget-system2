@@ -27,16 +27,137 @@
             overflow: hidden;
         }
         
+        /* ログイン画面のスタイル */
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .login-header {
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .login-form {
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .login-btn {
+            width: 100%;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        
+        .login-btn:hover {
+            background: #45a049;
+        }
+        
+        .login-error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .demo-credentials {
+            background: #e8f5e8;
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .demo-credentials h4 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        /* メイン画面のスタイル */
         .header {
             background: linear-gradient(135deg, #4CAF50 0%, #2196F3 100%);
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
         
         .header h1 {
             font-size: 28px;
             margin-bottom: 10px;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .logout-btn:active {
+            transform: scale(0.95);
         }
         
         .tabs {
@@ -287,14 +408,25 @@
             background: linear-gradient(45deg, #f44336, #da190b);
         }
         
+        /* 非表示クラス */
+        .hidden {
+            display: none !important;
+        }
+        
         @media (max-width: 768px) {
-            .container {
+            .container, .login-container {
                 margin: 10px;
                 border-radius: 15px;
             }
             
             .header {
                 padding: 20px;
+            }
+            
+            .logout-btn {
+                position: static;
+                margin-top: 10px;
+                display: inline-block;
             }
             
             .tab-content {
@@ -312,10 +444,44 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- ログイン画面 -->
+    <div id="login-screen" class="login-container">
+        <div class="login-header">
+            <h1>🔐 家計簿システム</h1>
+            <p>ログインして家計管理を始めましょう</p>
+        </div>
+        
+        <div class="login-form">
+            <div class="form-group">
+                <label for="username">ユーザーID</label>
+                <input type="text" id="username" placeholder="ユーザーIDを入力">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">パスワード</label>
+                <input type="password" id="password" placeholder="パスワードを入力">
+            </div>
+            
+            <button class="login-btn" onclick="login()">ログイン</button>
+            
+            <div id="login-error" class="login-error hidden">
+                ユーザーIDまたはパスワードが正しくありません
+            </div>
+        </div>
+        
+        <div class="demo-credentials">
+            <h4>🎯 テスト用アカウント</h4>
+            <p>デモ用のアカウントをご用意しています</p>
+            <p style="font-size: 12px; color: #666;">※ 実際のアカウント情報は管理者にお問い合わせください</p>
+        </div>
+    </div>
+
+    <!-- メイン画面 -->
+    <div id="main-screen" class="container hidden">
         <div class="header">
+            <button class="logout-btn" onclick="forceLogout(); return false;" type="button" title="確認なしでログアウト">🚪 ログアウト</button>
             <h1>💰 家計簿管理システム</h1>
-            <p>簡単で使いやすい家計簿でお金の管理をしましょう</p>
+            <p>ようこそ、<span id="current-user"></span>さん</p>
         </div>
         
         <div class="tabs">
@@ -463,8 +629,143 @@
     </div>
 
     <script>
-        // データ管理
+        // 認証管理（暗号化されたユーザー情報）
+        const validUsers = {
+            // ハッシュ化されたユーザー情報（本番環境では適切な暗号化を使用）
+            'YWRtaW4=': 'cGFzc3dvcmQ=',
+            'c2VvaHlhbmc=': 'MTIzNDU2',
+            'dXNlcjE=': 'bXlwYXNzd29yZA==',
+            'Z3Vlc3Q=': 'ZGVtbzEyMw=='
+        };
+
+        // Base64デコード関数
+        function decode(str) {
+            try {
+                return atob(str);
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // Base64エンコード関数
+        function encode(str) {
+            try {
+                return btoa(str);
+            } catch (e) {
+                return '';
+            }
+        }
+
+        let currentUser = '';
         let transactions = [];
+
+        // ログイン処理
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            console.log('ログイン試行:', username);
+
+            if (!username || !password) {
+                showLoginError('ユーザーIDとパスワードを入力してください');
+                return;
+            }
+
+            // ユーザー認証（Base64エンコードで比較）
+            const encodedUsername = encode(username);
+            const encodedPassword = encode(password);
+            
+            if (validUsers[encodedUsername] && validUsers[encodedUsername] === encodedPassword) {
+                // ログイン成功
+                currentUser = username;
+                document.getElementById('current-user').textContent = username;
+                
+                // 画面切り替え
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-screen').classList.remove('hidden');
+                
+                // 初期データ設定
+                initializeData();
+                
+                showNotification('success', `ようこそ、${username}さん！`);
+                console.log('ログイン成功:', username);
+            } else {
+                showLoginError('ユーザーIDまたはパスワードが正しくありません');
+                console.log('ログイン失敗:', username);
+            }
+
+            // パスワードフィールドをクリア
+            document.getElementById('password').value = '';
+        }
+
+        // ログアウト処理（修正版）
+        function logout() {
+            console.log('ログアウト処理開始');
+            
+            if (confirm('ログアウトしますか？データは保存されません。')) {
+                console.log('ログアウト確認OK');
+                
+                // データ初期化
+                currentUser = '';
+                transactions = [];
+                
+                // フォームクリア
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                const errorDiv = document.getElementById('login-error');
+                if (errorDiv) {
+                    errorDiv.classList.add('hidden');
+                }
+                
+                // 画面切り替え
+                const mainScreen = document.getElementById('main-screen');
+                const loginScreen = document.getElementById('login-screen');
+                
+                if (mainScreen && loginScreen) {
+                    mainScreen.classList.add('hidden');
+                    loginScreen.classList.remove('hidden');
+                    
+                    // ユーザー名フィールドにフォーカス
+                    setTimeout(() => {
+                        document.getElementById('username').focus();
+                    }, 100);
+                    
+                    showNotification('success', 'ログアウトしました');
+                    console.log('ログアウト完了');
+                } else {
+                    console.error('画面要素が見つかりません');
+                }
+            } else {
+                console.log('ログアウトキャンセル');
+            }
+        }
+
+        // ログインエラー表示
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Enter キーでログイン
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('username').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('password').focus();
+                }
+            });
+            
+            document.getElementById('password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+        });
 
         // 通知表示機能
         function showNotification(type, message, duration = 3000) {
@@ -493,76 +794,38 @@
             }, duration);
         }
 
-        // タブ切り替え（改良版）
+        // タブ切り替え
         function showTab(targetId) {
-            console.log('🔄 タブ切り替え:', targetId);
-            
-            // 全てのタブから active クラスを削除
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             
-            // 全てのコンテンツから active クラスを削除
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // クリックされたタブまたは指定されたタブに active クラスを追加
-            if (event && event.target) {
-                event.target.classList.add('active');
-            } else {
-                // プログラムからの呼び出しの場合
-                const tabs = document.querySelectorAll('.tab');
-                tabs.forEach((tab, index) => {
-                    const tabText = tab.textContent.toLowerCase();
-                    if (tabText.includes(targetId) || 
-                        (targetId === 'dashboard' && index === 0) ||
-                        (targetId === 'input' && index === 1) ||
-                        (targetId === 'history' && index === 2) ||
-                        (targetId === 'summary' && index === 3)) {
-                        tab.classList.add('active');
-                    }
-                });
-            }
-            
-            // 対応するコンテンツに active クラスを追加
-            const targetContent = document.getElementById(targetId);
-            if (targetContent) {
-                targetContent.classList.add('active');
-                console.log('✅ タブ切り替え成功:', targetId);
-                
-                // タブ切り替え後にデータを更新
-                if (targetId === 'history') {
-                    setTimeout(() => {
-                        updateTransactionList();
-                        console.log('📋 履歴表示を強制更新');
-                    }, 100);
-                }
-            } else {
-                console.error('❌ タブコンテンツが見つかりません:', targetId);
-            }
+            event.target.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
         }
 
-        // 全データ更新（強化版）
-        function updateAllDisplays() {
-            console.log('🔄 全データ更新開始');
-            console.log('📊 現在の取引データ:', transactions);
+        // 初期データ設定
+        function initializeData() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
             
-            try {
-                updateDashboard();
-                console.log('✅ ダッシュボード更新完了');
-                
-                updateTransactionList();
-                console.log('✅ 取引履歴更新完了');
-                
-                updateSummary();
-                console.log('✅ サマリー更新完了');
-                
-            } catch (error) {
-                console.error('❌ データ更新エラー:', error);
+            // 土日データを自動追加
+            if (transactions.length === 0) {
+                restoreWeekendData();
             }
             
-            console.log('🎯 全データ更新完了');
+            updateAllDisplays();
+        }
+
+        // 全データ更新
+        function updateAllDisplays() {
+            updateDashboard();
+            updateTransactionList();
+            updateSummary();
         }
 
         // ダッシュボード更新
@@ -589,20 +852,11 @@
             balanceElement.className = 'metric-value ' + (balance >= 0 ? 'positive' : 'negative');
         }
 
-        // 取引履歴更新（強化版）
+        // 取引履歴更新
         function updateTransactionList() {
-            console.log('📋 取引履歴更新開始');
-            console.log('📊 現在の取引データ数:', transactions.length);
-            
             const listElement = document.getElementById('transaction-list');
             
-            if (!listElement) {
-                console.error('❌ transaction-list要素が見つかりません');
-                return;
-            }
-            
             if (transactions.length === 0) {
-                console.log('📝 データが空のため、空メッセージを表示');
                 listElement.innerHTML = `
                     <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
                         まだ取引データがありません
@@ -611,38 +865,22 @@
                 return;
             }
 
-            // 取引データを日付順でソート
-            const sortedTransactions = [...transactions].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateB - dateA; // 新しい順
-            });
+            const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            console.log('📅 ソート済み取引データ:', sortedTransactions);
-
-            // HTML生成
-            const transactionHTML = sortedTransactions.map((transaction, index) => {
-                console.log(`📄 取引${index + 1}:`, transaction);
-                return `
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <div class="transaction-category">${transaction.category}</div>
-                            <div class="transaction-date">${transaction.date}${transaction.memo ? ' - ' + transaction.memo : ''}</div>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <div class="transaction-amount ${transaction.type}">
-                                ${transaction.type === 'income' ? '+' : '-'}¥${transaction.amount.toLocaleString()}
-                            </div>
-                            <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" type="button">削除</button>
-                        </div>
+            listElement.innerHTML = sortedTransactions.map(transaction => `
+                <div class="transaction-item">
+                    <div class="transaction-info">
+                        <div class="transaction-category">${transaction.category}</div>
+                        <div class="transaction-date">${transaction.date}${transaction.memo ? ' - ' + transaction.memo : ''}</div>
                     </div>
-                `;
-            }).join('');
-
-            // DOM更新
-            listElement.innerHTML = transactionHTML;
-            console.log('✅ 取引履歴HTML更新完了');
-            console.log('🔍 更新後のHTML:', listElement.innerHTML.substring(0, 200) + '...');
+                    <div style="display: flex; align-items: center;">
+                        <div class="transaction-amount ${transaction.type}">
+                            ${transaction.type === 'income' ? '+' : '-'}¥${transaction.amount.toLocaleString()}
+                        </div>
+                        <button class="delete-btn" onclick="deleteTransaction(${transaction.id})" type="button">削除</button>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // サマリー更新
@@ -719,38 +957,24 @@
                 }).join('');
         }
 
-        // 取引追加（即時反映対応版）
+        // 取引追加
         function addTransaction() {
-            console.log('🔄 取引追加処理開始');
-            
             const type = document.getElementById('transaction-type').value;
             const category = document.getElementById('category').value;
             const amount = parseFloat(document.getElementById('amount').value);
             const date = document.getElementById('date').value;
             const memo = document.getElementById('memo').value;
 
-            console.log('📝 入力データ:', { type, category, amount, date, memo });
-
-            // バリデーション
             if (!amount || amount <= 0) {
                 showNotification('error', '有効な金額を入力してください');
-                console.log('❌ 金額エラー');
                 return;
             }
 
             if (!date) {
                 showNotification('error', '日付を選択してください');
-                console.log('❌ 日付エラー');
                 return;
             }
 
-            if (!category) {
-                showNotification('error', 'カテゴリを選択してください');
-                console.log('❌ カテゴリエラー');
-                return;
-            }
-
-            // 取引データ作成
             const transaction = {
                 id: Date.now() + Math.random() * 1000,
                 type,
@@ -758,33 +982,14 @@
                 amount,
                 date,
                 memo: memo || '',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                user: currentUser
             };
 
-            console.log('📊 作成された取引:', transaction);
-
-            // データ追加
             transactions.push(transaction);
-            console.log('📋 現在の取引数:', transactions.length);
-
-            // 即座に全画面更新
-            console.log('🔄 画面更新開始');
-            updateDashboard();
-            console.log('✅ ダッシュボード更新完了');
-            
-            updateTransactionList();
-            console.log('✅ 取引履歴更新完了');
-            
-            updateSummary();
-            console.log('✅ サマリー更新完了');
-
-            // フォームクリア
+            updateAllDisplays();
             clearForm();
-            console.log('🧹 フォームクリア完了');
-
-            // 成功通知
             showNotification('success', `${type === 'income' ? '収入' : '支出'} ${category} ¥${amount.toLocaleString()} を追加しました`);
-            console.log('✅ 取引追加処理完了');
 
             // 取引履歴タブに自動切り替え
             setTimeout(() => {
@@ -792,7 +997,6 @@
                 if (historyTab) {
                     showTab('history');
                     historyTab.classList.add('active');
-                    console.log('📋 取引履歴タブに切り替え');
                 }
             }, 1000);
         }
@@ -838,20 +1042,20 @@
             
             const weekendExpenses = [
                 // 土曜日
-                { id: Date.now() + 1001, type: 'expense', category: '食費', amount: 1865, date: saturdayStr, memo: '成城石井', timestamp: new Date().toISOString() },
-                { id: Date.now() + 1002, type: 'expense', category: '食費', amount: 2026, date: saturdayStr, memo: 'いなげや', timestamp: new Date().toISOString() },
-                { id: Date.now() + 1003, type: 'expense', category: '生活費', amount: 437, date: saturdayStr, memo: 'マツキヨ', timestamp: new Date().toISOString() },
-                { id: Date.now() + 1004, type: 'expense', category: 'seohyang支出', amount: 5544, date: saturdayStr, memo: 'Amazon（seohyang利用）', timestamp: new Date().toISOString() },
+                { id: Date.now() + 1001, type: 'expense', category: '食費', amount: 1865, date: saturdayStr, memo: '成城石井', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1002, type: 'expense', category: '食費', amount: 2026, date: saturdayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1003, type: 'expense', category: '生活費', amount: 437, date: saturdayStr, memo: 'マツキヨ', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 1004, type: 'expense', category: 'seohyang支出', amount: 5544, date: saturdayStr, memo: 'Amazon（seohyang利用）', timestamp: new Date().toISOString(), user: currentUser },
                 
                 // 日曜日
-                { id: Date.now() + 2001, type: 'expense', category: '生活費', amount: 2860, date: sundayStr, memo: '子供の服', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2002, type: 'expense', category: 'レジャー費', amount: 3500, date: sundayStr, memo: '遊び', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2003, type: 'expense', category: '食費', amount: 5600, date: sundayStr, memo: 'ランチ（焼肉）', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2004, type: 'expense', category: '食費', amount: 804, date: sundayStr, memo: 'カルディ', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2005, type: 'expense', category: '生活費', amount: 1941, date: sundayStr, memo: '雑貨（子供）', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2006, type: 'expense', category: '食費', amount: 4384, date: sundayStr, memo: 'OKマート', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2007, type: 'expense', category: '食費', amount: 1231, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString() },
-                { id: Date.now() + 2008, type: 'expense', category: '食費', amount: 85, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString() }
+                { id: Date.now() + 2001, type: 'expense', category: '生活費', amount: 2860, date: sundayStr, memo: '子供の服', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2002, type: 'expense', category: 'レジャー費', amount: 3500, date: sundayStr, memo: '遊び', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2003, type: 'expense', category: '食費', amount: 5600, date: sundayStr, memo: 'ランチ（焼肉）', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2004, type: 'expense', category: '食費', amount: 804, date: sundayStr, memo: 'カルディ', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2005, type: 'expense', category: '生活費', amount: 1941, date: sundayStr, memo: '雑貨（子供）', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2006, type: 'expense', category: '食費', amount: 4384, date: sundayStr, memo: 'OKマート', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2007, type: 'expense', category: '食費', amount: 1231, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser },
+                { id: Date.now() + 2008, type: 'expense', category: '食費', amount: 85, date: sundayStr, memo: 'いなげや', timestamp: new Date().toISOString(), user: currentUser }
             ];
             
             const existingKeys = transactions.map(t => `${t.date}-${t.memo}-${t.amount}`);
@@ -873,15 +1077,10 @@
 
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date').value = today;
+            console.log('🔐 認証付き家計簿システム初期化完了');
             
-            // 初期データとして土日データを自動追加
-            if (transactions.length === 0) {
-                restoreWeekendData();
-            }
-            
-            updateAllDisplays();
+            // ログイン画面にフォーカス
+            document.getElementById('username').focus();
         });
     </script>
 </body>

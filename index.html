@@ -300,6 +300,89 @@
             background: #2196F3;
         }
         
+        /* カテゴリーフィルター */
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .category-summary-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .category-summary-header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 500;
+        }
+        
+        .category-summary-content {
+            padding: 15px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        .summary-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
         .transaction-list {
             background: white;
             border-radius: 15px;
@@ -433,12 +516,20 @@
                 padding: 20px;
             }
             
-            .input-grid {
+            .input-grid, .filter-grid {
                 grid-template-columns: 1fr;
             }
             
             .dashboard-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .filter-buttons {
+                justify-content: center;
+            }
+            
+            .category-summary-content {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -569,7 +660,6 @@
                 </div>
                 <button class="btn" onclick="addTransaction()">取引を追加</button>
                 <button class="btn btn-secondary" onclick="clearForm()">フォームクリア</button>
-                <button class="btn btn-restore" onclick="restoreWeekendData()">🔄 土日データ復元</button>
             </div>
         </div>
         
@@ -577,8 +667,84 @@
         <div class="tab-content" id="history">
             <div class="section-title">📋 取引履歴</div>
             
-            <div style="margin-bottom: 20px;">
-                <button class="btn btn-danger" onclick="clearAllData()">全データクリア</button>
+            <!-- フィルター機能 -->
+            <div class="filter-section">
+                <h3>🔍 絞り込み・検索</h3>
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label>カテゴリ</label>
+                        <select id="category-filter">
+                            <option value="">すべてのカテゴリ</option>
+                            <optgroup label="💸 支出">
+                                <option value="食費">食費</option>
+                                <option value="生活費">生活費</option>
+                                <option value="レジャー費">レジャー費</option>
+                                <option value="旅費">旅費</option>
+                                <option value="seohyang支出">seohyang支出</option>
+                                <option value="美容費">美容費</option>
+                                <option value="住宅ローン">住宅ローン</option>
+                                <option value="水道光熱費">水道光熱費</option>
+                                <option value="教育費">教育費</option>
+                                <option value="その他支出">その他支出</option>
+                            </optgroup>
+                            <optgroup label="💰 収入">
+                                <option value="副収入">副収入</option>
+                                <option value="その他収入">その他収入</option>
+                                <option value="給与">給与</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>取引種別</label>
+                        <select id="type-filter">
+                            <option value="">収入・支出すべて</option>
+                            <option value="income">収入のみ</option>
+                            <option value="expense">支出のみ</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>期間（開始日）</label>
+                        <input type="date" id="date-from-filter">
+                    </div>
+                    <div class="filter-group">
+                        <label>期間（終了日）</label>
+                        <input type="date" id="date-to-filter">
+                    </div>
+                    <div class="filter-group">
+                        <label>メモ検索</label>
+                        <input type="text" id="memo-filter" placeholder="メモの内容で検索">
+                    </div>
+                </div>
+                <div class="filter-buttons">
+                    <button class="btn btn-small" onclick="applyFilters()">絞り込み実行</button>
+                    <button class="btn btn-secondary btn-small" onclick="clearFilters()">フィルタクリア</button>
+                    <button class="btn btn-danger btn-small" onclick="clearAllData()">全データクリア</button>
+                </div>
+            </div>
+            
+            <!-- 選択されたカテゴリのサマリー -->
+            <div id="category-summary-card" class="category-summary-card hidden">
+                <div class="category-summary-header">
+                    <span id="selected-category-name">選択カテゴリ</span>のサマリー
+                </div>
+                <div class="category-summary-content">
+                    <div class="summary-item">
+                        <div class="summary-value" id="category-total-amount">¥0</div>
+                        <div class="summary-label">合計金額</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="category-transaction-count">0</div>
+                        <div class="summary-label">取引件数</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="category-avg-amount">¥0</div>
+                        <div class="summary-label">平均金額</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="category-date-range">-</div>
+                        <div class="summary-label">期間</div>
+                    </div>
+                </div>
             </div>
             
             <div class="transaction-list" id="transaction-list">
@@ -694,6 +860,7 @@
         // グローバル変数
         let currentUser = '';
         let transactions = [];
+        let filteredTransactions = [];
 
         // 認証管理
         const validUsers = {
@@ -760,7 +927,7 @@
                     user: currentUser,
                     transactions: transactions,
                     lastSaved: new Date().toISOString(),
-                    version: 'v14.0'
+                    version: 'v15.0'
                 };
                 
                 localStorage.setItem(getStorageKey(), JSON.stringify(dataToSave));
@@ -793,6 +960,104 @@
                 transactions = [];
                 return false;
             }
+        }
+
+        // フィルター機能
+        function applyFilters() {
+            const categoryFilter = document.getElementById('category-filter').value;
+            const typeFilter = document.getElementById('type-filter').value;
+            const dateFromFilter = document.getElementById('date-from-filter').value;
+            const dateToFilter = document.getElementById('date-to-filter').value;
+            const memoFilter = document.getElementById('memo-filter').value.toLowerCase();
+
+            filteredTransactions = transactions.filter(transaction => {
+                // カテゴリフィルター
+                if (categoryFilter && transaction.category !== categoryFilter) {
+                    return false;
+                }
+                
+                // タイプフィルター
+                if (typeFilter && transaction.type !== typeFilter) {
+                    return false;
+                }
+                
+                // 日付フィルター（開始日）
+                if (dateFromFilter && transaction.date < dateFromFilter) {
+                    return false;
+                }
+                
+                // 日付フィルター（終了日）
+                if (dateToFilter && transaction.date > dateToFilter) {
+                    return false;
+                }
+                
+                // メモフィルター
+                if (memoFilter && !transaction.memo.toLowerCase().includes(memoFilter)) {
+                    return false;
+                }
+                
+                return true;
+            });
+
+            updateTransactionList(filteredTransactions);
+            updateCategorySummaryCard(categoryFilter, filteredTransactions);
+            
+            const filterCount = filteredTransactions.length;
+            const totalCount = transactions.length;
+            showNotification('success', `${filterCount}件の取引が見つかりました（全${totalCount}件中）`);
+        }
+
+        function clearFilters() {
+            document.getElementById('category-filter').value = '';
+            document.getElementById('type-filter').value = '';
+            document.getElementById('date-from-filter').value = '';
+            document.getElementById('date-to-filter').value = '';
+            document.getElementById('memo-filter').value = '';
+            
+            filteredTransactions = [];
+            updateTransactionList();
+            hideCategorySummaryCard();
+            
+            showNotification('success', 'フィルターをクリアしました');
+        }
+
+        function updateCategorySummaryCard(categoryName, transactions) {
+            const summaryCard = document.getElementById('category-summary-card');
+            const categoryNameEl = document.getElementById('selected-category-name');
+            
+            if (!categoryName || transactions.length === 0) {
+                hideCategorySummaryCard();
+                return;
+            }
+            
+            const categoryTransactions = transactions.filter(t => t.category === categoryName);
+            
+            if (categoryTransactions.length === 0) {
+                hideCategorySummaryCard();
+                return;
+            }
+            
+            // カテゴリサマリーを計算
+            const totalAmount = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            const transactionCount = categoryTransactions.length;
+            const avgAmount = transactionCount > 0 ? totalAmount / transactionCount : 0;
+            
+            // 日付範囲を計算
+            const dates = categoryTransactions.map(t => t.date).sort();
+            const dateRange = dates.length > 0 ? `${dates[0]} 〜 ${dates[dates.length - 1]}` : '-';
+            
+            // UI更新
+            categoryNameEl.textContent = categoryName;
+            document.getElementById('category-total-amount').textContent = `¥${totalAmount.toLocaleString()}`;
+            document.getElementById('category-transaction-count').textContent = `${transactionCount}件`;
+            document.getElementById('category-avg-amount').textContent = `¥${Math.round(avgAmount).toLocaleString()}`;
+            document.getElementById('category-date-range').textContent = dateRange;
+            
+            summaryCard.classList.remove('hidden');
+        }
+
+        function hideCategorySummaryCard() {
+            document.getElementById('category-summary-card').classList.add('hidden');
         }
 
         // ログイン
@@ -877,6 +1142,7 @@
                 addInitialWeekendData();
             }
             
+            filteredTransactions = [];
             updateAllDisplays();
         }
 
@@ -944,7 +1210,24 @@
             
             if (confirm(`この取引を削除しますか？\n${foundTransaction.category}: ¥${foundTransaction.amount.toLocaleString()}`)) {
                 transactions = transactions.filter(t => Number(t.id) !== Number(id));
-                updateAllDisplays();
+                
+                // フィルターが適用されている場合はフィルター結果も更新
+                if (filteredTransactions.length > 0) {
+                    filteredTransactions = filteredTransactions.filter(t => Number(t.id) !== Number(id));
+                    updateTransactionList(filteredTransactions);
+                    
+                    // カテゴリサマリーカードも更新
+                    const categoryFilter = document.getElementById('category-filter').value;
+                    if (categoryFilter) {
+                        updateCategorySummaryCard(categoryFilter, filteredTransactions);
+                    }
+                } else {
+                    updateTransactionList();
+                }
+                
+                updateDashboard();
+                updateSummary();
+                updateYearlySummary();
                 
                 const saveSuccess = saveToLocalStorage();
                 
@@ -961,7 +1244,9 @@
             if (confirm('全ての取引データを削除しますか？この操作は元に戻せません。')) {
                 const count = transactions.length;
                 transactions = [];
+                filteredTransactions = [];
                 updateAllDisplays();
+                clearFilters();
                 
                 const saveSuccess = saveToLocalStorage();
                 
@@ -999,19 +1284,21 @@
             balanceElement.className = 'metric-value ' + (balance >= 0 ? 'positive' : 'negative');
         }
 
-        function updateTransactionList() {
+        function updateTransactionList(transactionsToShow = null) {
             const listElement = document.getElementById('transaction-list');
+            const targetTransactions = transactionsToShow || transactions;
             
-            if (transactions.length === 0) {
+            if (targetTransactions.length === 0) {
+                const message = transactionsToShow ? '条件に一致する取引がありません' : 'まだ取引データがありません';
                 listElement.innerHTML = `
                     <div class="transaction-item" style="text-align: center; color: #666; font-style: italic;">
-                        まだ取引データがありません
+                        ${message}
                     </div>
                 `;
                 return;
             }
 
-            const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const sortedTransactions = [...targetTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             listElement.innerHTML = sortedTransactions.map(transaction => `
                 <div class="transaction-item">
